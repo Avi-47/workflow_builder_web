@@ -20,3 +20,25 @@ A responsive, interactive workflow diagram builder with drag-and-drop functional
    ```
 2. Open ```workflow_builder.html``` in any modern browser
 3. No server or dependencies required!
+
+🎮 Usage
+Basic Controls:
+Drag elements from the sidebar to canvas
+
+Click connection points (blue dots) to create links
+
+Double-click elements to edit text
+
+Delete key removes selected items
+
+Keyboard Shortcuts:
+Key	Action
+S	Add Start/End
+P	Add Process
+D	Add Decision
+O	Add Document
+Del	Delete selected
+Ctrl+A	Select all
+Ctrl+Z	Undo
+Ctrl+C/V	Copy/Paste
+H	Show shortcuts
