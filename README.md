@@ -1,6 +1,3 @@
-<details>
-<summary><b>📋 Workflow Builder - Complete Documentation</b></summary>
-
 # Workflow Builder 🏗️
 
 A responsive, interactive workflow diagram builder with drag-and-drop functionality, connection tools, and PDF export capabilities.
