@@ -206,14 +206,16 @@
             border: 2px solid #37352f;
             width: 100px;
             height: 100px;
-            transform: rotate(45deg);
+            /* Removed rotation for better usability */
             display: flex;
             align-items: center;
             justify-content: center;
+            /* Diamond shape using clip-path instead of rotation */
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
         }
 
         .decision-content {
-            transform: rotate(-45deg);
+            /* No need for counter-rotation */
             text-align: center;
             font-size: 12px;
             line-height: 1.2;
@@ -496,7 +498,7 @@
             margin-bottom: 8px;
         }
 
-        .color-controls {
+        .color-controls, .shape-controls {
             display: flex;
             gap: 8px;
             margin-bottom: 8px;
@@ -513,9 +515,17 @@
             padding: 0;
         }
 
-        .color-label {
+        .color-label, .shape-label {
             font-size: 12px;
             color: #6b6a67;
+        }
+        
+        .shape-select {
+            padding: 4px 8px;
+            border: 1px solid #e9e9e7;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
         }
 
         .text-edit-actions {
@@ -894,7 +904,8 @@
                     y: parseInt(el.style.top),
                     text: el.querySelector('.element-text')?.value || '',
                     textColor: el.querySelector('.element-text')?.style.color || '#37352f',
-                    borderColor: el.style.borderColor || '#37352f'
+                    borderColor: el.style.borderColor || '#37352f',
+                    shape: el.dataset.shape || getDefaultShape(el.dataset.type)
                 })),
                 wires: wires.map(wire => ({
                     ...wire,
@@ -1006,6 +1017,11 @@
                     }
                 });
             }
+            // Apply saved shape or default shape
+            if (data.shape) {
+                element.dataset.shape = data.shape;
+                updateElementShape(element, data.shape);
+            }
             return element;
         }
 
@@ -1017,6 +1033,7 @@
             element.style.top = y + 'px';
             element.dataset.id = `element-${elementCounter}`;
             element.dataset.type = type;
+            element.dataset.shape = getDefaultShape(type);
 
             let content = '';
             let defaultText = getDefaultText(type);
@@ -1056,12 +1073,30 @@
                     break;
             }
 
+            // Add connection points based on element type
+            let connectionPoints = '';
+            
+            if (type === 'decision') {
+                // For decision boxes, place connection points in the corners
+                connectionPoints = `
+                    <div class="connection-point" style="top: 0; left: 50%; transform: translateX(-50%);" data-position="top"></div>
+                    <div class="connection-point" style="bottom: 0; left: 50%; transform: translateX(-50%);" data-position="bottom"></div>
+                    <div class="connection-point" style="left: 0; top: 50%; transform: translateY(-50%);" data-position="left"></div>
+                    <div class="connection-point" style="right: 0; top: 50%; transform: translateY(-50%);" data-position="right"></div>
+                `;
+            } else {
+                // For other elements, use standard connection points
+                connectionPoints = `
+                    <div class="connection-point" style="top: -5px; left: 50%; transform: translateX(-50%);" data-position="top"></div>
+                    <div class="connection-point" style="bottom: -5px; left: 50%; transform: translateX(-50%);" data-position="bottom"></div>
+                    <div class="connection-point" style="left: -5px; top: 50%; transform: translateY(-50%);" data-position="left"></div>
+                    <div class="connection-point" style="right: -5px; top: 50%; transform: translateY(-50%);" data-position="right"></div>
+                `;
+            }
+            
             element.innerHTML = content + `
                 <button class="delete-btn" onclick="deleteElement('${element.dataset.id}')">×</button>
-                <div class="connection-point" style="top: -5px; left: 50%; transform: translateX(-50%);" data-position="top"></div>
-                <div class="connection-point" style="bottom: -5px; left: 50%; transform: translateX(-50%);" data-position="bottom"></div>
-                <div class="connection-point" style="left: -5px; top: 50%; transform: translateY(-50%);" data-position="left"></div>
-                <div class="connection-point" style="right: -5px; top: 50%; transform: translateY(-50%);" data-position="right"></div>
+                ${connectionPoints}
             `;
 
             // Add event listeners
@@ -1119,6 +1154,20 @@
                 default: return 'Element';
             }
         }
+        
+        function getDefaultShape(type) {
+            switch(type) {
+                case 'decision': return 'diamond';
+                case 'process': return 'rectangle';
+                case 'connector': return 'oval';
+                case 'start': return 'rounded';
+                case 'document': return 'document';
+                case 'database': return 'database';
+                case 'predefined': return 'predefined';
+                case 'delay': return 'delay';
+                default: return '';
+            }
+        }
 
         function showTextEditOverlay(element, textInput) {
             hideTextEditOverlay();
@@ -1134,6 +1183,42 @@
             
             const currentTextColor = textInput.style.color || '#37352f';
             const currentBorderColor = element.style.borderColor || '#37352f';
+            const elementType = element.dataset.type;
+            
+            // Create shape customization options based on element type
+            let shapeControls = '';
+            const currentShape = element.dataset.shape || getDefaultShape(elementType);
+            
+            if (elementType === 'decision') {
+                shapeControls = `
+                <div class="shape-controls">
+                    <span class="shape-label">Shape:</span>
+                    <select class="shape-select" id="shapeSelect">
+                        <option value="diamond" ${currentShape === 'diamond' ? 'selected' : ''}>Diamond</option>
+                        <option value="square" ${currentShape === 'square' ? 'selected' : ''}>Square</option>
+                        <option value="rounded" ${currentShape === 'rounded' ? 'selected' : ''}>Rounded</option>
+                    </select>
+                </div>`;
+            } else if (elementType === 'process') {
+                shapeControls = `
+                <div class="shape-controls">
+                    <span class="shape-label">Shape:</span>
+                    <select class="shape-select" id="shapeSelect">
+                        <option value="rectangle" ${currentShape === 'rectangle' ? 'selected' : ''}>Rectangle</option>
+                        <option value="rounded" ${currentShape === 'rounded' ? 'selected' : ''}>Rounded</option>
+                    </select>
+                </div>`;
+            } else if (elementType === 'connector') {
+                shapeControls = `
+                <div class="shape-controls">
+                    <span class="shape-label">Shape:</span>
+                    <select class="shape-select" id="shapeSelect">
+                        <option value="circle" ${currentShape === 'circle' ? 'selected' : ''}>Circle</option>
+                        <option value="oval" ${currentShape === 'oval' ? 'selected' : ''}>Oval</option>
+                        <option value="rounded" ${currentShape === 'rounded' ? 'selected' : ''}>Rounded Rectangle</option>
+                    </select>
+                </div>`;
+            }
             
             textEditOverlay.innerHTML = `
                 <input type="text" class="text-edit-input" value="${textInput.value}" placeholder="Enter text...">
@@ -1143,6 +1228,7 @@
                     <span class="color-label">Border:</span>
                     <input type="color" class="color-input" id="borderColor" value="${rgbToHex(currentBorderColor)}">
                 </div>
+                ${shapeControls}
                 <div class="text-edit-actions">
                     <button class="text-edit-btn" onclick="cancelTextEdit()">Cancel</button>
                     <button class="text-edit-btn btn-primary" onclick="saveTextEdit()">Save</button>
@@ -1155,6 +1241,7 @@
             const input = textEditOverlay.querySelector('.text-edit-input');
             const textColorInput = textEditOverlay.querySelector('#textColor');
             const borderColorInput = textEditOverlay.querySelector('#borderColor');
+            const shapeSelect = textEditOverlay.querySelector('#shapeSelect');
             
             input.focus();
             input.select();
@@ -1169,6 +1256,13 @@
                 // Apply to pseudo-elements and child elements
                 updateElementBorderColor(element, e.target.value);
             });
+            
+            // Shape customization preview
+            if (shapeSelect) {
+                shapeSelect.addEventListener('change', (e) => {
+                    updateElementShape(element, e.target.value);
+                });
+            }
             
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
@@ -1193,6 +1287,108 @@
                 element.style.setProperty('--border-color', color);
             }
         }
+        
+        function updateElementShape(element, shapeType) {
+            const elementType = element.dataset.type;
+            
+            // Reset any previously applied styles
+            element.style.borderRadius = '';
+            element.style.clipPath = '';
+            
+            if (elementType === 'decision') {
+                switch(shapeType) {
+                    case 'diamond':
+                        element.style.clipPath = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
+                        element.style.borderRadius = '0';
+                        break;
+                    case 'square':
+                        element.style.clipPath = 'none';
+                        element.style.borderRadius = '0';
+                        break;
+                    case 'rounded':
+                        element.style.clipPath = 'none';
+                        element.style.borderRadius = '12px';
+                        break;
+                }
+                
+                // Update connection points for decision box
+                updateDecisionConnectionPoints(element, shapeType);
+            } 
+            else if (elementType === 'process') {
+                switch(shapeType) {
+                    case 'rectangle':
+                        element.style.borderRadius = '0';
+                        break;
+                    case 'rounded':
+                        element.style.borderRadius = '12px';
+                        break;
+                }
+            }
+            else if (elementType === 'connector') {
+                switch(shapeType) {
+                    case 'circle':
+                        element.style.borderRadius = '50%';
+                        element.style.width = element.style.height;
+                        break;
+                    case 'oval':
+                        element.style.borderRadius = '50%';
+                        break;
+                    case 'rounded':
+                        element.style.borderRadius = '12px';
+                        break;
+                }
+            }
+            
+            // Update all wires connected to this element
+            updateAllWires();
+        }
+        
+        function updateDecisionConnectionPoints(element, shapeType) {
+            // Remove existing connection points
+            element.querySelectorAll('.connection-point').forEach(point => point.remove());
+            
+            // Add new connection points based on shape
+            let connectionPoints;
+            
+            if (shapeType === 'diamond') {
+                // For diamond shape, place points at the corners
+                connectionPoints = `
+                    <div class="connection-point" style="top: 0; left: 50%; transform: translateX(-50%);" data-position="top"></div>
+                    <div class="connection-point" style="bottom: 0; left: 50%; transform: translateX(-50%);" data-position="bottom"></div>
+                    <div class="connection-point" style="left: 0; top: 50%; transform: translateY(-50%);" data-position="left"></div>
+                    <div class="connection-point" style="right: 0; top: 50%; transform: translateY(-50%);" data-position="right"></div>
+                `;
+            } else {
+                // For other shapes, use standard connection points
+                connectionPoints = `
+                    <div class="connection-point" style="top: -5px; left: 50%; transform: translateX(-50%);" data-position="top"></div>
+                    <div class="connection-point" style="bottom: -5px; left: 50%; transform: translateX(-50%);" data-position="bottom"></div>
+                    <div class="connection-point" style="left: -5px; top: 50%; transform: translateY(-50%);" data-position="left"></div>
+                    <div class="connection-point" style="right: -5px; top: 50%; transform: translateY(-50%);" data-position="right"></div>
+                `;
+            }
+            
+            // Add the connection points to the element
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = connectionPoints;
+            while (tempDiv.firstChild) {
+                const point = tempDiv.firstChild;
+                element.appendChild(point);
+                
+                // Add event listeners to the new connection points
+                point.addEventListener('click', handleConnectionPoint);
+                point.addEventListener('mouseenter', () => {
+                    if (isConnecting && connectionStart && connectionStart.element !== element) {
+                        point.style.background = '#4CAF50';
+                    }
+                });
+                point.addEventListener('mouseleave', () => {
+                    if (!point.classList.contains('active')) {
+                        point.style.background = '#2383e2';
+                    }
+                });
+            }
+        }
 
         function rgbToHex(rgb) {
             if (rgb.startsWith('#')) return rgb;
@@ -1215,12 +1411,21 @@
             const newText = textEditOverlay.querySelector('.text-edit-input').value;
             const textColor = textEditOverlay.querySelector('#textColor').value;
             const borderColor = textEditOverlay.querySelector('#borderColor').value;
+            const shapeSelect = textEditOverlay.querySelector('#shapeSelect');
             
             if (element) {
                 const textInput = element.querySelector('.element-text');
                 textInput.value = newText;
                 textInput.style.color = textColor;
                 updateElementBorderColor(element, borderColor);
+                
+                // Save shape customization if available
+                if (shapeSelect) {
+                    const selectedShape = shapeSelect.value;
+                    element.dataset.shape = selectedShape; // Store the shape type in the dataset
+                    updateElementShape(element, selectedShape);
+                }
+                
                 saveState();
             }
             
@@ -1928,20 +2133,52 @@
                     ctx.fill();
                     ctx.stroke();
                 } else if (element.classList.contains('process')) {
-                    ctx.fillRect(x, y, width, height);
-                    ctx.strokeRect(x, y, width, height);
+                    const shape = element.dataset.shape || 'rectangle';
+                    
+                    if (shape === 'rectangle') {
+                        ctx.fillRect(x, y, width, height);
+                        ctx.strokeRect(x, y, width, height);
+                    } else if (shape === 'rounded') {
+                        drawRoundedRect(ctx, x, y, width, height, 12);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
                 } else if (element.classList.contains('decision')) {
-                    ctx.save();
-                    ctx.translate(x + width/2, y + height/2);
-                    ctx.rotate(Math.PI/4);
-                    ctx.fillRect(-width/2, -height/2, width, height);
-                    ctx.strokeRect(-width/2, -height/2, width, height);
-                    ctx.restore();
+                    const shape = element.dataset.shape || 'diamond';
+                    
+                    if (shape === 'diamond') {
+                        // Draw diamond shape
+                        ctx.beginPath();
+                        ctx.moveTo(x + width/2, y); // Top point
+                        ctx.lineTo(x + width, y + height/2); // Right point
+                        ctx.lineTo(x + width/2, y + height); // Bottom point
+                        ctx.lineTo(x, y + height/2); // Left point
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    } else if (shape === 'square') {
+                        // Draw square
+                        ctx.fillRect(x, y, width, height);
+                        ctx.strokeRect(x, y, width, height);
+                    } else if (shape === 'rounded') {
+                        // Draw rounded rectangle
+                        drawRoundedRect(ctx, x, y, width, height, 12);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
                 } else if (element.classList.contains('connector')) {
-                    ctx.beginPath();
-                    ctx.ellipse(x + width/2, y + height/2, width/2, height/2, 0, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.stroke();
+                    const shape = element.dataset.shape || 'oval';
+                    
+                    if (shape === 'circle' || shape === 'oval') {
+                        ctx.beginPath();
+                        ctx.ellipse(x + width/2, y + height/2, width/2, height/2, 0, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.stroke();
+                    } else if (shape === 'rounded') {
+                        drawRoundedRect(ctx, x, y, width, height, 12);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
                 } else if (element.classList.contains('document')) {
                     ctx.fillRect(x, y, width, height - 12);
                     ctx.strokeRect(x, y, width, height - 12);
