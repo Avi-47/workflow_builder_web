@@ -1,4 +1,3 @@
-# workflow_builder_web
 Here's a GitHub README in dropdown format for your Workflow Builder HTML project:
 
 markdown
@@ -100,3 +99,5 @@ This README features:
 5. Responsive design for GitHub's markdown viewer
 
 You can customize the placeholder text (like author name and demo link) with your actual project details. The dropdown format helps keep the README compact while making all information accessible.
+
+whole thing as dropdown
