@@ -21,3 +21,5 @@ A responsive, interactive workflow diagram builder with drag-and-drop functional
    ```bash
    git clone https://github.com/yourusername/workflow-builder.git
    ```
+2. Open ```workflow_builder.html``` in any modern browser
+3. No server or dependencies required!
