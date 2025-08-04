@@ -1,3 +1,5 @@
+<details>
+<summary><b>📋 Workflow Builder - Complete Documentation</b></summary>
 # Workflow Builder
 
 A modern, interactive web-based flowchart and workflow diagram builder with drag-and-drop functionality, real-time editing, and PDF export capabilities.
