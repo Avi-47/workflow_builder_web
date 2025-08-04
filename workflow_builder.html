@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Builder</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: #fafafa;
+            color: #37352f;
+            line-height: 1.5;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #e9e9e7;
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #37352f;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid #e9e9e7;
+            border-radius: 6px;
+            background: white;
+            color: #37352f;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: #f7f6f3;
+            border-color: #d3d1cb;
+        }
+
+        .btn-primary {
+            background: #37352f;
+            color: white;
+            border-color: #37352f;
+        }
+
+        .btn-primary:hover {
+            background: #2c2a26;
+            border-color: #2c2a26;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 24px;
+            padding: 24px;
+            min-height: calc(100vh - 80px);
+        }
+
+        .sidebar {
+            width: 260px;
+            background: white;
+            border: 1px solid #e9e9e7;
+            border-radius: 8px;
+            padding: 20px;
+            height: fit-content;
+            position: sticky;
+            top: 104px;
+        }
+
+        .sidebar h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #37352f;
+            border-bottom: 1px solid #e9e9e7;
+            padding-bottom: 8px;
+        }
+
+        .elements-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .element-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 1px solid #e9e9e7;
+            border-radius: 6px;
+            cursor: grab;
+            transition: all 0.15s ease;
+            background: white;
+        }
+
+        .element-item:hover {
+            background: #f7f6f3;
+            border-color: #d3d1cb;
+            transform: translateY(-1px);
+        }
+
+        .element-item:active {
+            cursor: grabbing;
+        }
+
+        .element-preview {
+            flex-shrink: 0;
+        }
+
+        .element-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #37352f;
+        }
+
+        .canvas-area {
+            flex: 1;
+            background: white;
+            border: 1px solid #e9e9e7;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas {
+            width: 100%;
+            height: 600px;
+            position: relative;
+            background-image: 
+                linear-gradient(rgba(55, 53, 47, 0.09) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(55, 53, 47, 0.09) 1px, transparent 1px);
+            background-size: 24px 24px;
+            overflow: auto;
+        }
+
+        .workflow-element {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+            z-index: 10;
+            font-size: 14px;
+            transition: all 0.15s ease;
+        }
+
+        .workflow-element:hover {
+            transform: translateY(-1px);
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+        }
+
+        .workflow-element.selected {
+            box-shadow: 0 0 0 2px #2383e2;
+        }
+
+        .start-end {
+            background: white;
+            border: 2px solid #37352f;
+            border-radius: 24px;
+            padding: 12px 20px;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .process {
+            background: white;
+            border: 2px solid #37352f;
+            border-radius: 4px;
+            padding: 12px 16px;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .decision {
+            background: white;
+            border: 2px solid #37352f;
+            width: 100px;
+            height: 100px;
+            transform: rotate(45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .decision-content {
+            transform: rotate(-45deg);
+            text-align: center;
+            font-size: 12px;
+            line-height: 1.2;
+            max-width: 70px;
+        }
+
+        .connector {
+            background: white;
+            border: 2px solid #37352f;
+            border-radius: 50px;
+            padding: 8px 16px;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .document {
+            background: white;
+            border: 2px solid #37352f;
+            border-radius: 4px 4px 0 0;
+            padding: 12px 16px;
+            min-width: 100px;
+            text-align: center;
+            position: relative;
+        }
+
+        .document::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: -2px;
+            right: -2px;
+            height: 12px;
+            background: white;
+            border: 2px solid #37352f;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            transform: perspective(10px) rotateX(45deg);
+        }
+
+        .database {
+            background: white;
+            border: 2px solid #37352f;
+            border-radius: 50px/20px;
+            padding: 12px 16px;
+            min-width: 100px;
+            text-align: center;
+            position: relative;
+        }
+
+        .database::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: -2px;
+            right: -2px;
+            height: 12px;
+            background: white;
+            border: 2px solid #37352f;
+            border-bottom: none;
+            border-radius: 50px/20px 50px/20px 0 0;
+        }
+
+        .predefined {
+            background: white;
+            border: 2px solid #37352f;
+            border-radius: 12px;
+            padding: 12px 16px;
+            min-width: 100px;
+            text-align: center;
+            position: relative;
+        }
+
+        .predefined::before {
+            content: '';
+            position: absolute;
+            left: 12px;
+            top: -2px;
+            bottom: -2px;
+            width: 2px;
+            background: #37352f;
+        }
+
+        .predefined::after {
+            content: '';
+            position: absolute;
+            right: 12px;
+            top: -2px;
+            bottom: -2px;
+            width: 2px;
+            background: #37352f;
+        }
+
+        .delay {
+            background: white;
+            border: 2px solid #37352f;
+            border-radius: 50px;
+            padding: 12px 16px;
+            min-width: 100px;
+            text-align: center;
+            position: relative;
+        }
+
+        .delay::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid #37352f;
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+        }
+
+        .element-text {
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: inherit;
+            font-weight: 500;
+            color: inherit;
+            text-align: center;
+            width: 100%;
+            resize: none;
+        }
+
+        .element-text:focus {
+            background: #f7f6f3;
+            border-radius: 3px;
+        }
+
+        .connection-point {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #2383e2;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: crosshair;
+            opacity: 0;
+            transition: all 0.15s ease;
+            z-index: 20;
+            transform-origin: center;
+        }
+
+        .workflow-element:hover .connection-point {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+
+        .connection-point:hover {
+            background: #1a73d1;
+            transform: scale(1.4) !important;
+        }
+
+        .connection-point.active {
+            opacity: 1;
+            background: #ff6b35;
+            transform: scale(1.4);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .wire {
+            position: absolute;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .wire-line {
+            stroke: #37352f;
+            stroke-width: 2;
+            fill: none;
+            transition: all 0.15s ease;
+            pointer-events: stroke;
+            cursor: pointer;
+        }
+
+        .wire-line:hover {
+            stroke: #2383e2;
+            stroke-width: 3;
+        }
+
+        .wire.selected .wire-line,
+        .wire-line.selected {
+            stroke: #2383e2;
+            stroke-width: 3;
+        }
+
+        .wire-drag-handle {
+            fill: #2383e2;
+            stroke: white;
+            stroke-width: 2;
+            cursor: move;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .wire-line:hover + .wire-drag-handle,
+        .wire-line.selected + .wire-drag-handle {
+            opacity: 1;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            width: 24px;
+            height: 24px;
+            background: #ff6b35;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            transition: all 0.15s ease;
+        }
+
+        .delete-btn:hover {
+            background: #e55a2b;
+            transform: scale(1.1);
+        }
+
+        .workflow-element:hover .delete-btn,
+        .wire:hover .delete-btn {
+            display: flex;
+        }
+
+        .connecting-mode {
+            cursor: crosshair !important;
+        }
+
+        .connecting-mode * {
+            cursor: crosshair !important;
+        }
+
+        .connection-preview {
+            position: absolute;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        .connection-preview-line {
+            stroke: #2383e2;
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
+            fill: none;
+            opacity: 0.7;
+        }
+
+        .text-edit-overlay {
+            position: absolute;
+            background: white;
+            border: 2px solid #2383e2;
+            border-radius: 6px;
+            padding: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            min-width: 250px;
+        }
+
+        .text-edit-input {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            font-weight: 500;
+            background: transparent;
+            color: #37352f;
+            margin-bottom: 8px;
+        }
+
+        .color-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+
+        .color-input {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #e9e9e7;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+
+        .color-label {
+            font-size: 12px;
+            color: #6b6a67;
+        }
+
+        .text-edit-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .text-edit-btn {
+            padding: 6px 12px;
+            border: 1px solid #e9e9e7;
+            border-radius: 4px;
+            background: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .text-edit-btn:hover {
+            background: #f7f6f3;
+        }
+
+        .text-edit-btn.btn-primary {
+            background: #37352f;
+            color: white;
+            border-color: #37352f;
+        }
+
+        .text-edit-btn.btn-primary:hover {
+            background: #2c2a26;
+        }
+
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #9b9a97;
+            pointer-events: none;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 4px;
+            background: white;
+            border: 1px solid #e9e9e7;
+            border-radius: 6px;
+            padding: 4px;
+            z-index: 50;
+        }
+
+        .zoom-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.15s ease;
+        }
+
+        .zoom-btn:hover {
+            background: #f7f6f3;
+        }
+
+        .connection-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: #37352f;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.15s ease;
+            z-index: 50;
+        }
+
+        .connection-hint.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .keyboard-shortcuts {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border: 1px solid #e9e9e7;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 11px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.15s ease;
+            z-index: 50;
+            max-width: 200px;
+        }
+
+        .keyboard-shortcuts.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .keyboard-shortcuts h4 {
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #37352f;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .shortcut-key {
+            background: #f7f6f3;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                padding: 16px;
+            }
+            
+            .sidebar {
+                width: 100%;
+                position: static;
+            }
+            
+            .canvas {
+                height: 400px;
+            }
+
+            .zoom-controls, .connection-hint, .keyboard-shortcuts {
+                position: fixed;
+            }
+
+            .zoom-controls {
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .connection-hint {
+                bottom: 10px;
+                left: 10px;
+            }
+
+            .keyboard-shortcuts {
+                top: 10px;
+                left: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>Workflow Builder</h1>
+            <div class="header-controls">
+                <button class="btn" onclick="toggleShortcuts()">
+                    ⌨️ Shortcuts
+                </button>
+                <button class="btn" onclick="clearCanvas()">
+                    🗑️ Clear
+                </button>
+                <button class="btn" onclick="undoAction()">
+                    ↶ Undo
+                </button>
+                <button class="btn btn-primary" onclick="exportToPDF()">
+                    📄 Export PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <h3>Flow Elements</h3>
+            <div class="elements-grid">
+                <div class="element-item" draggable="true" data-type="start">
+                    <div class="element-preview">
+                        <div style="width: 32px; height: 16px; border: 1px solid #37352f; border-radius: 8px; background: white;"></div>
+                    </div>
+                    <div class="element-name">Start/End</div>
+                </div>
+                
+                <div class="element-item" draggable="true" data-type="process">
+                    <div class="element-preview">
+                        <div style="width: 32px; height: 16px; border: 1px solid #37352f; background: white;"></div>
+                    </div>
+                    <div class="element-name">Process</div>
+                </div>
+                
+                <div class="element-item" draggable="true" data-type="decision">
+                    <div class="element-preview">
+                        <div style="width: 16px; height: 16px; border: 1px solid #37352f; background: white; transform: rotate(45deg);"></div>
+                    </div>
+                    <div class="element-name">Decision</div>
+                </div>
+                
+                <div class="element-item" draggable="true" data-type="connector">
+                    <div class="element-preview">
+                        <div style="width: 32px; height: 16px; border: 1px solid #37352f; border-radius: 8px; background: white;"></div>
+                    </div>
+                    <div class="element-name">Connector</div>
+                </div>
+
+                <div class="element-item" draggable="true" data-type="document">
+                    <div class="element-preview">
+                        <div style="width: 32px; height: 16px; border: 1px solid #37352f; background: white; position: relative;">
+                            <div style="position: absolute; bottom: -2px; left: -1px; right: -1px; height: 4px; border: 1px solid #37352f; border-top: none; background: white;"></div>
+                        </div>
+                    </div>
+                    <div class="element-name">Document</div>
+                </div>
+
+                <div class="element-item" draggable="true" data-type="database">
+                    <div class="element-preview">
+                        <div style="width: 32px; height: 16px; border: 1px solid #37352f; border-radius: 50%/30%; background: white; position: relative;">
+                            <div style="position: absolute; top: -2px; left: -1px; right: -1px; height: 4px; border: 1px solid #37352f; border-bottom: none; border-radius: 50%/30% 50%/30% 0 0; background: white;"></div>
+                        </div>
+                    </div>
+                    <div class="element-name">Database</div>
+                </div>
+
+                <div class="element-item" draggable="true" data-type="predefined">
+                    <div class="element-preview">
+                        <div style="width: 32px; height: 16px; border: 1px solid #37352f; border-radius: 4px; background: white; position: relative;">
+                            <div style="position: absolute; left: 4px; top: -1px; bottom: -1px; width: 1px; background: #37352f;"></div>
+                            <div style="position: absolute; right: 4px; top: -1px; bottom: -1px; width: 1px; background: #37352f;"></div>
+                        </div>
+                    </div>
+                    <div class="element-name">Predefined</div>
+                </div>
+
+                <div class="element-item" draggable="true" data-type="delay">
+                    <div class="element-preview">
+                        <div style="width: 32px; height: 16px; border: 1px solid #37352f; border-radius: 8px; background: white; position: relative;">
+                            <div style="position: absolute; left: 4px; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-left: 4px solid #37352f; border-top: 2px solid transparent; border-bottom: 2px solid transparent;"></div>
+                        </div>
+                    </div>
+                    <div class="element-name">Delay</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div class="canvas" id="canvas">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📊</div>
+                    <div>Drag elements here to start building your workflow</div>
+                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">Click connection points to link elements</div>
+                    <div style="font-size: 11px; margin-top: 4px; opacity: 0.5;">Press H to see keyboard shortcuts</div>
+                </div>
+                
+                <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#37352f" />
+                        </marker>
+                        <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#2383e2" />
+                        </marker>
+                    </defs>
+                </svg>
+
+                <svg class="connection-preview" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15;">
+                </svg>
+            </div>
+
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out (Ctrl -)">−</button>
+                <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom (Ctrl 0)">⌂</button>
+                <button class="zoom-btn" onclick="zoomIn()" title="Zoom In (Ctrl +)">+</button>
+            </div>
+
+            <div class="connection-hint" id="connectionHint">
+                Click a connection point to start linking elements
+            </div>
+
+            <div class="keyboard-shortcuts" id="keyboardShortcuts">
+                <h4>Keyboard Shortcuts</h4>
+                <div class="shortcut-item">
+                    <span>Add Start</span>
+                    <span class="shortcut-key">S</span>
+                </div>
+                <div class="shortcut-item">
+                    <span>Add Process</span>
+                    <span class="shortcut-key">P</span>
+                </div>
+                <div class="shortcut-item">
+                    <span>Add Decision</span>
+                    <span class="shortcut-key">D</span>
+                </div>
+                <div class="shortcut-item">
+                    <span>Add Document</span>
+                    <span class="shortcut-key">O</span>
+                </div>
+                <div class="shortcut-item">
+                    <span>Delete</span>
+                    <span class="shortcut-key">Del</span>
+                </div>
+                <div class="shortcut-item">
+                    <span>Undo</span>
+                    <span class="shortcut-key">Ctrl+Z</span>
+                </div>
+                <div class="shortcut-item">
+                    <span>Select All</span>
+                    <span class="shortcut-key">Ctrl+A</span>
+                </div>
+                <div class="shortcut-item">
+                    <span>Copy</span>
+                    <span class="shortcut-key">Ctrl+C</span>
+                </div>
+                <div class="shortcut-item">
+                    <span>Paste</span>
+                    <span class="shortcut-key">Ctrl+V</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let draggedElement = null;
+        let selectedElement = null;
+        let selectedElements = [];
+        let elementCounter = 0;
+        let wireCounter = 0;
+        let isDragging = false;
+        let isWireDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        let isConnecting = false;
+        let connectionStart = null;
+        let wires = [];
+        let textEditOverlay = null;
+        let currentZoom = 1;
+        let history = [];
+        let historyIndex = -1;
+        let clipboard = [];
+        let shortcutsVisible = false;
+
+        const canvas = document.getElementById('canvas');
+        const svg = canvas.querySelector('svg');
+        const previewSvg = canvas.querySelector('.connection-preview');
+        const connectionHint = document.getElementById('connectionHint');
+        const keyboardShortcuts = document.getElementById('keyboardShortcuts');
+
+        // Save state for undo functionality
+        function saveState() {
+            const state = {
+                elements: Array.from(canvas.querySelectorAll('.workflow-element')).map(el => ({
+                    id: el.dataset.id,
+                    type: el.dataset.type,
+                    x: parseInt(el.style.left),
+                    y: parseInt(el.style.top),
+                    text: el.querySelector('.element-text')?.value || '',
+                    textColor: el.querySelector('.element-text')?.style.color || '#37352f',
+                    borderColor: el.style.borderColor || '#37352f'
+                })),
+                wires: wires.map(wire => ({
+                    ...wire,
+                    start: {
+                        elementId: wire.start.element.dataset.id,
+                        position: wire.start.point.dataset.position
+                    },
+                    end: {
+                        elementId: wire.end.element.dataset.id,
+                        position: wire.end.point.dataset.position
+                    }
+                }))
+            };
+            
+            history = history.slice(0, historyIndex + 1);
+            history.push(JSON.stringify(state));
+            historyIndex++;
+            
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
+            }
+        }
+
+        function undoAction() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                const state = JSON.parse(history[historyIndex]);
+                restoreState(state);
+            }
+        }
+
+        function restoreState(state) {
+            // Clear current state
+            canvas.querySelectorAll('.workflow-element').forEach(el => el.remove());
+            svg.querySelectorAll('.wire-line').forEach(line => line.remove());
+            wires = [];
+
+            // Restore elements
+            state.elements.forEach(elementData => {
+                createWorkflowElementFromData(elementData);
+            });
+
+            // Restore wires
+            state.wires.forEach(wireData => {
+                const startElement = canvas.querySelector(`[data-id="${wireData.start.elementId}"]`);
+                const endElement = canvas.querySelector(`[data-id="${wireData.end.elementId}"]`);
+                
+                if (startElement && endElement) {
+                    const startPoint = startElement.querySelector(`[data-position="${wireData.start.position}"]`);
+                    const endPoint = endElement.querySelector(`[data-position="${wireData.end.position}"]`);
+                    
+                    if (startPoint && endPoint) {
+                        const wire = {
+                            id: wireData.id,
+                            start: { element: startElement, point: startPoint },
+                            end: { element: endElement, point: endPoint }
+                        };
+                        wires.push(wire);
+                        updateWireDisplay(wire);
+                    }
+                }
+            });
+
+            updateEmptyState();
+        }
+
+        // Drag and drop from sidebar
+        document.querySelectorAll('.element-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                draggedElement = e.target.closest('.element-item').dataset.type;
+            });
+        });
+
+        canvas.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (draggedElement) {
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / currentZoom;
+                const y = (e.clientY - rect.top) / currentZoom;
+                saveState();
+                createWorkflowElement(draggedElement, x, y);
+                draggedElement = null;
+                hideEmptyState();
+            }
+        });
+
+        function createWorkflowElementFromData(data) {
+            const element = createWorkflowElement(data.type, data.x, data.y, false);
+            element.dataset.id = data.id;
+            const textInput = element.querySelector('.element-text');
+            if (textInput) {
+                textInput.value = data.text;
+                if (data.textColor) {
+                    textInput.style.color = data.textColor;
+                }
+            }
+            if (data.borderColor) {
+                element.style.borderColor = data.borderColor;
+                // Apply border color to all child elements that have borders
+                const borderedElements = element.querySelectorAll('[style*="border"]');
+                borderedElements.forEach(el => {
+                    if (el.style.border || el.style.borderColor) {
+                        el.style.borderColor = data.borderColor;
+                    }
+                });
+            }
+            return element;
+        }
+
+        function createWorkflowElement(type, x, y, autoFocus = true) {
+            elementCounter++;
+            const element = document.createElement('div');
+            element.className = 'workflow-element';
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+            element.dataset.id = `element-${elementCounter}`;
+            element.dataset.type = type;
+
+            let content = '';
+            let defaultText = getDefaultText(type);
+
+            switch(type) {
+                case 'start':
+                    element.classList.add('start-end');
+                    content = `<input type="text" class="element-text" value="${defaultText}">`;
+                    break;
+                case 'process':
+                    element.classList.add('process');
+                    content = `<input type="text" class="element-text" value="${defaultText}">`;
+                    break;
+                case 'decision':
+                    element.classList.add('decision');
+                    content = `<div class="decision-content"><input type="text" class="element-text" value="${defaultText}"></div>`;
+                    break;
+                case 'connector':
+                    element.classList.add('connector');
+                    content = `<input type="text" class="element-text" value="${defaultText}">`;
+                    break;
+                case 'document':
+                    element.classList.add('document');
+                    content = `<input type="text" class="element-text" value="${defaultText}">`;
+                    break;
+                case 'database':
+                    element.classList.add('database');
+                    content = `<input type="text" class="element-text" value="${defaultText}">`;
+                    break;
+                case 'predefined':
+                    element.classList.add('predefined');
+                    content = `<input type="text" class="element-text" value="${defaultText}">`;
+                    break;
+                case 'delay':
+                    element.classList.add('delay');
+                    content = `<input type="text" class="element-text" value="${defaultText}">`;
+                    break;
+            }
+
+            element.innerHTML = content + `
+                <button class="delete-btn" onclick="deleteElement('${element.dataset.id}')">×</button>
+                <div class="connection-point" style="top: -5px; left: 50%; transform: translateX(-50%);" data-position="top"></div>
+                <div class="connection-point" style="bottom: -5px; left: 50%; transform: translateX(-50%);" data-position="bottom"></div>
+                <div class="connection-point" style="left: -5px; top: 50%; transform: translateY(-50%);" data-position="left"></div>
+                <div class="connection-point" style="right: -5px; top: 50%; transform: translateY(-50%);" data-position="right"></div>
+            `;
+
+            // Add event listeners
+            element.addEventListener('mousedown', startDrag);
+            element.addEventListener('click', selectElement);
+
+            // Add connection point listeners
+            element.querySelectorAll('.connection-point').forEach(point => {
+                point.addEventListener('click', handleConnectionPoint);
+                point.addEventListener('mouseenter', () => {
+                    if (isConnecting && connectionStart && connectionStart.element !== element) {
+                        point.style.background = '#4CAF50';
+                    }
+                });
+                point.addEventListener('mouseleave', () => {
+                    if (!point.classList.contains('active')) {
+                        point.style.background = '#2383e2';
+                    }
+                });
+            });
+
+            // Add text input listeners
+            const textInput = element.querySelector('.element-text');
+            textInput.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showTextEditOverlay(element, textInput);
+            });
+            textInput.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                textInput.select();
+            });
+
+            canvas.appendChild(element);
+            
+            // Auto-focus for immediate editing
+            if (autoFocus) {
+                setTimeout(() => {
+                    showTextEditOverlay(element, textInput);
+                }, 100);
+            }
+
+            return element;
+        }
+
+        function getDefaultText(type) {
+            switch(type) {
+                case 'start': return 'Start';
+                case 'process': return 'Process';
+                case 'decision': return 'Decision?';
+                case 'connector': return 'Connector';
+                case 'document': return 'Document';
+                case 'database': return 'Database';
+                case 'predefined': return 'Predefined';
+                case 'delay': return 'Delay';
+                default: return 'Element';
+            }
+        }
+
+        function showTextEditOverlay(element, textInput) {
+            hideTextEditOverlay();
+            
+            textEditOverlay = document.createElement('div');
+            textEditOverlay.className = 'text-edit-overlay';
+            
+            const rect = element.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            textEditOverlay.style.left = (rect.left - canvasRect.left) + 'px';
+            textEditOverlay.style.top = (rect.bottom - canvasRect.top + 8) + 'px';
+            
+            const currentTextColor = textInput.style.color || '#37352f';
+            const currentBorderColor = element.style.borderColor || '#37352f';
+            
+            textEditOverlay.innerHTML = `
+                <input type="text" class="text-edit-input" value="${textInput.value}" placeholder="Enter text...">
+                <div class="color-controls">
+                    <span class="color-label">Text:</span>
+                    <input type="color" class="color-input" id="textColor" value="${rgbToHex(currentTextColor)}">
+                    <span class="color-label">Border:</span>
+                    <input type="color" class="color-input" id="borderColor" value="${rgbToHex(currentBorderColor)}">
+                </div>
+                <div class="text-edit-actions">
+                    <button class="text-edit-btn" onclick="cancelTextEdit()">Cancel</button>
+                    <button class="text-edit-btn btn-primary" onclick="saveTextEdit()">Save</button>
+                </div>
+            `;
+            
+            textEditOverlay.dataset.elementId = element.dataset.id;
+            canvas.appendChild(textEditOverlay);
+            
+            const input = textEditOverlay.querySelector('.text-edit-input');
+            const textColorInput = textEditOverlay.querySelector('#textColor');
+            const borderColorInput = textEditOverlay.querySelector('#borderColor');
+            
+            input.focus();
+            input.select();
+            
+            // Live preview of colors
+            textColorInput.addEventListener('input', (e) => {
+                textInput.style.color = e.target.value;
+            });
+            
+            borderColorInput.addEventListener('input', (e) => {
+                element.style.borderColor = e.target.value;
+                // Apply to pseudo-elements and child elements
+                updateElementBorderColor(element, e.target.value);
+            });
+            
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveTextEdit();
+                } else if (e.key === 'Escape') {
+                    cancelTextEdit();
+                }
+            });
+        }
+
+        function updateElementBorderColor(element, color) {
+            element.style.borderColor = color;
+            
+            // Update connection points
+            element.querySelectorAll('.connection-point').forEach(point => {
+                point.style.borderColor = 'white'; // Keep connection points white border
+            });
+            
+            // For elements with pseudo-elements, we need to add inline styles
+            if (element.classList.contains('document')) {
+                element.style.setProperty('--border-color', color);
+            }
+        }
+
+        function rgbToHex(rgb) {
+            if (rgb.startsWith('#')) return rgb;
+            
+            const match = rgb.match(/\d+/g);
+            if (!match) return '#37352f';
+            
+            const r = parseInt(match[0]);
+            const g = parseInt(match[1]);
+            const b = parseInt(match[2]);
+            
+            return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+        }
+
+        function saveTextEdit() {
+            if (!textEditOverlay) return;
+            
+            const elementId = textEditOverlay.dataset.elementId;
+            const element = document.querySelector(`[data-id="${elementId}"]`);
+            const newText = textEditOverlay.querySelector('.text-edit-input').value;
+            const textColor = textEditOverlay.querySelector('#textColor').value;
+            const borderColor = textEditOverlay.querySelector('#borderColor').value;
+            
+            if (element) {
+                const textInput = element.querySelector('.element-text');
+                textInput.value = newText;
+                textInput.style.color = textColor;
+                updateElementBorderColor(element, borderColor);
+                saveState();
+            }
+            
+            hideTextEditOverlay();
+        }
+
+        function cancelTextEdit() {
+            hideTextEditOverlay();
+        }
+
+        function hideTextEditOverlay() {
+            if (textEditOverlay) {
+                textEditOverlay.remove();
+                textEditOverlay = null;
+            }
+        }
+
+        function handleConnectionPoint(e) {
+            e.stopPropagation();
+            
+            if (!isConnecting) {
+                // Start connection
+                isConnecting = true;
+                connectionStart = {
+                    element: e.target.closest('.workflow-element'),
+                    point: e.target
+                };
+                e.target.classList.add('active');
+                canvas.classList.add('connecting-mode');
+                connectionHint.textContent = 'Click another connection point to complete the link';
+                connectionHint.classList.add('show');
+                
+                // Add mouse move listener for preview
+                document.addEventListener('mousemove', showConnectionPreview);
+            } else {
+                // End connection
+                const endElement = e.target.closest('.workflow-element');
+                const endPoint = e.target;
+                
+                if (connectionStart.element !== endElement) {
+                    saveState();
+                    createWire(connectionStart, { element: endElement, point: endPoint });
+                }
+                
+                // Reset connection state
+                resetConnectionMode();
+            }
+        }
+
+        function showConnectionPreview(e) {
+            if (!isConnecting || !connectionStart) return;
+            
+            const canvasRect = canvas.getBoundingClientRect();
+            const startPos = getConnectionPointPosition(connectionStart.element, connectionStart.point);
+            const endPos = {
+                x: (e.clientX - canvasRect.left) / currentZoom,
+                y: (e.clientY - canvasRect.top) / currentZoom
+            };
+            
+            // Clear previous preview
+            previewSvg.innerHTML = '';
+            
+            // Create preview line
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            line.setAttribute('class', 'connection-preview-line');
+            
+            const path = createArrowPath(startPos, endPos);
+            line.setAttribute('d', path);
+            line.setAttribute('marker-end', 'url(#arrowhead-blue)');
+            
+            previewSvg.appendChild(line);
+        }
+
+        function createArrowPath(startPos, endPos) {
+            const dx = endPos.x - startPos.x;
+            const dy = endPos.y - startPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Calculate control points for smooth curves
+            let controlPoint1, controlPoint2;
+            
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // Horizontal flow
+                const curve = Math.min(Math.abs(dx) * 0.5, 100);
+                controlPoint1 = { x: startPos.x + curve, y: startPos.y };
+                controlPoint2 = { x: endPos.x - curve, y: endPos.y };
+            } else {
+                // Vertical flow
+                const curve = Math.min(Math.abs(dy) * 0.5, 100);
+                controlPoint1 = { x: startPos.x, y: startPos.y + curve };
+                controlPoint2 = { x: endPos.x, y: endPos.y - curve };
+            }
+            
+            return `M ${startPos.x} ${startPos.y} C ${controlPoint1.x} ${controlPoint1.y}, ${controlPoint2.x} ${controlPoint2.y}, ${endPos.x} ${endPos.y}`;
+        }
+
+        function resetConnectionMode() {
+            if (connectionStart && connectionStart.point) {
+                connectionStart.point.classList.remove('active');
+            }
+            isConnecting = false;
+            connectionStart = null;
+            canvas.classList.remove('connecting-mode');
+            connectionHint.classList.remove('show');
+            previewSvg.innerHTML = '';
+            document.removeEventListener('mousemove', showConnectionPreview);
+        }
+
+        function createWire(start, end) {
+            wireCounter++;
+            const wireId = `wire-${wireCounter}`;
+            
+            const wire = {
+                id: wireId,
+                start: {
+                    element: start.element,
+                    point: start.point
+                },
+                end: {
+                    element: end.element,
+                    point: end.point
+                }
+            };
+            
+            wires.push(wire);
+            updateWireDisplay(wire);
+        }
+
+        function updateWireDisplay(wire) {
+            // Remove existing wire elements
+            const existingGroup = svg.querySelector(`[data-wire-id="${wire.id}"]`);
+            if (existingGroup) {
+                existingGroup.remove();
+            }
+            
+            const startPos = getConnectionPointPosition(wire.start.element, wire.start.point);
+            const endPos = getConnectionPointPosition(wire.end.element, wire.end.point);
+            
+            // Create group for wire elements
+            const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            group.setAttribute('data-wire-id', wire.id);
+            group.setAttribute('class', 'wire');
+            
+            // Create the main line
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            line.setAttribute('class', 'wire-line');
+            
+            const path = createArrowPath(startPos, endPos);
+            line.setAttribute('d', path);
+            line.setAttribute('marker-end', 'url(#arrowhead)');
+            
+            // Create drag handle at midpoint
+            const midX = (startPos.x + endPos.x) / 2;
+            const midY = (startPos.y + endPos.y) / 2;
+            
+            const dragHandle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dragHandle.setAttribute('class', 'wire-drag-handle');
+            dragHandle.setAttribute('cx', midX);
+            dragHandle.setAttribute('cy', midY);
+            dragHandle.setAttribute('r', 6);
+            
+            // Add elements to group
+            group.appendChild(line);
+            group.appendChild(dragHandle);
+            
+            // Add event listeners
+            line.style.pointerEvents = 'stroke';
+            line.style.cursor = 'pointer';
+            line.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectWire(wire.id);
+            });
+            
+            dragHandle.style.pointerEvents = 'all';
+            dragHandle.style.cursor = 'move';
+            dragHandle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                startWireDrag(e, wire, dragHandle);
+            });
+            
+            // Add hover effects
+            group.addEventListener('mouseenter', () => {
+                if (!line.classList.contains('selected')) {
+                    line.setAttribute('marker-end', 'url(#arrowhead-blue)');
+                }
+                showWireDeleteButton(wire, line);
+            });
+            
+            group.addEventListener('mouseleave', () => {
+                if (!line.classList.contains('selected')) {
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                }
+                hideWireDeleteButton();
+            });
+            
+            svg.appendChild(group);
+        }
+
+        function startWireDrag(e, wire, dragHandle) {
+            isWireDragging = true;
+            e.preventDefault();
+            
+            const startMousePos = { x: e.clientX, y: e.clientY };
+            const startHandlePos = {
+                x: parseFloat(dragHandle.getAttribute('cx')),
+                y: parseFloat(dragHandle.getAttribute('cy'))
+            };
+            
+            function dragWire(e) {
+                if (!isWireDragging) return;
+                
+                const deltaX = (e.clientX - startMousePos.x) / currentZoom;
+                const deltaY = (e.clientY - startMousePos.y) / currentZoom;
+                
+                const newX = startHandlePos.x + deltaX;
+                const newY = startHandlePos.y + deltaY;
+                
+                dragHandle.setAttribute('cx', newX);
+                dragHandle.setAttribute('cy', newY);
+                
+                // Update the wire path with the new control point
+                updateWireWithDragHandle(wire, { x: newX, y: newY });
+            }
+            
+            function stopWireDrag() {
+                isWireDragging = false;
+                document.removeEventListener('mousemove', dragWire);
+                document.removeEventListener('mouseup', stopWireDrag);
+                saveState();
+            }
+            
+            document.addEventListener('mousemove', dragWire);
+            document.addEventListener('mouseup', stopWireDrag);
+        }
+
+        function updateWireWithDragHandle(wire, controlPoint) {
+            const startPos = getConnectionPointPosition(wire.start.element, wire.start.point);
+            const endPos = getConnectionPointPosition(wire.end.element, wire.end.point);
+            
+            const line = svg.querySelector(`[data-wire-id="${wire.id}"] .wire-line`);
+            if (line) {
+                // Create path with custom control point
+                const path = `M ${startPos.x} ${startPos.y} Q ${controlPoint.x} ${controlPoint.y} ${endPos.x} ${endPos.y}`;
+                line.setAttribute('d', path);
+            }
+        }
+
+        function getConnectionPointPosition(element, point) {
+            const elementRect = element.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            const pointRect = point.getBoundingClientRect();
+            
+            return {
+                x: (pointRect.left + pointRect.width/2 - canvasRect.left) / currentZoom,
+                y: (pointRect.top + pointRect.height/2 - canvasRect.top) / currentZoom
+            };
+        }
+
+        function selectWire(wireId) {
+            // Deselect all elements and wires
+            document.querySelectorAll('.workflow-element.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+            document.querySelectorAll('.wire-line.selected').forEach(line => {
+                line.classList.remove('selected');
+                line.setAttribute('marker-end', 'url(#arrowhead)');
+            });
+            
+            // Select clicked wire
+            const wireGroup = svg.querySelector(`[data-wire-id="${wireId}"]`);
+            const wireLine = wireGroup?.querySelector('.wire-line');
+            if (wireLine) {
+                wireLine.classList.add('selected');
+                wireLine.setAttribute('marker-end', 'url(#arrowhead-blue)');
+                
+                const wire = wires.find(w => w.id === wireId);
+                if (wire) {
+                    showWireDeleteButton(wire, wireLine);
+                }
+            }
+        }
+
+        let wireDeleteButton = null;
+
+        function showWireDeleteButton(wire, wireLine) {
+            hideWireDeleteButton();
+            
+            const startPos = getConnectionPointPosition(wire.start.element, wire.start.point);
+            const endPos = getConnectionPointPosition(wire.end.element, wire.end.point);
+            
+            const midX = (startPos.x + endPos.x) / 2;
+            const midY = (startPos.y + endPos.y) / 2;
+            
+            wireDeleteButton = document.createElement('button');
+            wireDeleteButton.className = 'delete-btn wire-delete-btn';
+            wireDeleteButton.innerHTML = '×';
+            wireDeleteButton.style.position = 'absolute';
+            wireDeleteButton.style.left = midX * currentZoom - 12 + 'px';
+            wireDeleteButton.style.top = midY * currentZoom - 12 + 'px';
+            wireDeleteButton.style.display = 'flex';
+            wireDeleteButton.style.zIndex = '50';
+            
+            wireDeleteButton.onclick = (e) => {
+                e.stopPropagation();
+                saveState();
+                deleteWire(wire.id);
+            };
+            
+            canvas.appendChild(wireDeleteButton);
+        }
+
+        function hideWireDeleteButton() {
+            if (wireDeleteButton) {
+                wireDeleteButton.remove();
+                wireDeleteButton = null;
+            }
+        }
+
+        function deleteWire(wireId) {
+            wires = wires.filter(w => w.id !== wireId);
+            const wireGroup = svg.querySelector(`[data-wire-id="${wireId}"]`);
+            if (wireGroup) {
+                wireGroup.remove();
+            }
+            hideWireDeleteButton();
+        }
+
+        function updateAllWires() {
+            wires.forEach(wire => {
+                updateWireDisplay(wire);
+            });
+        }
+
+        function startDrag(e) {
+            if (e.target.classList.contains('element-text') || 
+                e.target.classList.contains('delete-btn') || 
+                e.target.classList.contains('connection-point') ||
+                textEditOverlay ||
+                isConnecting ||
+                isWireDragging) {
+                return;
+            }
+            
+            isDragging = true;
+            selectedElement = e.currentTarget;
+            
+            const rect = selectedElement.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            dragOffset.x = (e.clientX - rect.left) / currentZoom;
+            dragOffset.y = (e.clientY - rect.top) / currentZoom;
+            
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+            
+            e.preventDefault();
+        }
+
+        function drag(e) {
+            if (!isDragging || !selectedElement) return;
+            
+            const canvasRect = canvas.getBoundingClientRect();
+            const x = (e.clientX - canvasRect.left) / currentZoom - dragOffset.x;
+            const y = (e.clientY - canvasRect.top) / currentZoom - dragOffset.y;
+            
+            selectedElement.style.left = Math.max(0, x) + 'px';
+            selectedElement.style.top = Math.max(0, y) + 'px';
+            
+            updateAllWires();
+            hideWireDeleteButton();
+        }
+
+        function stopDrag() {
+            if (isDragging) {
+                saveState();
+            }
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        function selectElement(e) {
+            if (e.target.classList.contains('element-text') || 
+                e.target.classList.contains('delete-btn') || 
+                e.target.classList.contains('connection-point') ||
+                isConnecting) {
+                return;
+            }
+            
+            const element = e.currentTarget;
+            
+            if (e.ctrlKey || e.metaKey) {
+                // Multi-select
+                if (element.classList.contains('selected')) {
+                    element.classList.remove('selected');
+                    selectedElements = selectedElements.filter(el => el !== element);
+                } else {
+                    element.classList.add('selected');
+                    selectedElements.push(element);
+                }
+            } else {
+                // Single select
+                document.querySelectorAll('.workflow-element.selected').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                document.querySelectorAll('.wire-line.selected').forEach(line => {
+                    line.classList.remove('selected');
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                });
+                hideWireDeleteButton();
+                
+                element.classList.add('selected');
+                selectedElement = element;
+                selectedElements = [element];
+            }
+        }
+
+        function deleteElement(elementId) {
+            saveState();
+            const element = document.querySelector(`[data-id="${elementId}"]`);
+            if (element) {
+                // Remove wires connected to this element
+                wires = wires.filter(wire => {
+                    const shouldRemove = wire.start.element === element || wire.end.element === element;
+                    if (shouldRemove) {
+                        const wireGroup = svg.querySelector(`[data-wire-id="${wire.id}"]`);
+                        if (wireGroup) wireGroup.remove();
+                    }
+                    return !shouldRemove;
+                });
+                
+                element.remove();
+                selectedElements = selectedElements.filter(el => el !== element);
+                hideWireDeleteButton();
+                updateEmptyState();
+            }
+        }
+
+        function deleteSelectedElements() {
+            if (selectedElements.length > 0) {
+                saveState();
+                selectedElements.forEach(element => {
+                    deleteElement(element.dataset.id);
+                });
+                selectedElements = [];
+            }
+            
+            // Delete selected wire
+            const selectedWire = svg.querySelector('.wire-line.selected');
+            if (selectedWire) {
+                const wireGroup = selectedWire.closest('[data-wire-id]');
+                const wireId = wireGroup.getAttribute('data-wire-id');
+                saveState();
+                deleteWire(wireId);
+            }
+        }
+
+        function selectAllElements() {
+            selectedElements = [];
+            document.querySelectorAll('.workflow-element').forEach(el => {
+                el.classList.add('selected');
+                selectedElements.push(el);
+            });
+        }
+
+        function copyElements() {
+            if (selectedElements.length > 0) {
+                clipboard = selectedElements.map(el => ({
+                    type: el.dataset.type,
+                    text: el.querySelector('.element-text')?.value || '',
+                    textColor: el.querySelector('.element-text')?.style.color || '#37352f',
+                    borderColor: el.style.borderColor || '#37352f',
+                    offsetX: parseInt(el.style.left),
+                    offsetY: parseInt(el.style.top)
+                }));
+            }
+        }
+
+        function pasteElements() {
+            if (clipboard.length > 0) {
+                saveState();
+                const minX = Math.min(...clipboard.map(el => el.offsetX));
+                const minY = Math.min(...clipboard.map(el => el.offsetY));
+                
+                // Clear current selection
+                document.querySelectorAll('.workflow-element.selected').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                selectedElements = [];
+                
+                clipboard.forEach(elementData => {
+                    const newX = elementData.offsetX - minX + 50;
+                    const newY = elementData.offsetY - minY + 50;
+                    
+                    const newElement = createWorkflowElement(elementData.type, newX, newY, false);
+                    const textInput = newElement.querySelector('.element-text');
+                    if (textInput) {
+                        textInput.value = elementData.text;
+                        textInput.style.color = elementData.textColor;
+                    }
+                    updateElementBorderColor(newElement, elementData.borderColor);
+                    
+                    newElement.classList.add('selected');
+                    selectedElements.push(newElement);
+                });
+                
+                hideEmptyState();
+            }
+        }
+
+        function clearCanvas() {
+            if (confirm('Clear all elements and connections?')) {
+                saveState();
+                canvas.querySelectorAll('.workflow-element').forEach(el => el.remove());
+                svg.querySelectorAll('[data-wire-id]').forEach(group => group.remove());
+                hideWireDeleteButton();
+                wires = [];
+                selectedElements = [];
+                elementCounter = 0;
+                wireCounter = 0;
+                hideTextEditOverlay();
+                resetConnectionMode();
+                showEmptyState();
+            }
+        }
+
+        function updateEmptyState() {
+            if (!canvas.querySelector('.workflow-element')) {
+                showEmptyState();
+            } else {
+                hideEmptyState();
+            }
+        }
+
+        function hideEmptyState() {
+            const emptyState = canvas.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.style.display = 'none';
+            }
+        }
+
+        function showEmptyState() {
+            const emptyState = canvas.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.style.display = 'block';
+            }
+        }
+
+        // Zoom functionality
+        function zoomIn() {
+            currentZoom = Math.min(currentZoom * 1.2, 3);
+            applyZoom();
+        }
+
+        function zoomOut() {
+            currentZoom = Math.max(currentZoom / 1.2, 0.3);
+            applyZoom();
+        }
+
+        function resetZoom() {
+            currentZoom = 1;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            canvas.style.transform = `scale(${currentZoom})`;
+            canvas.style.transformOrigin = 'top left';
+            updateAllWires();
+            hideWireDeleteButton();
+        }
+
+        // Keyboard shortcuts
+        function addElementByShortcut(type) {
+            const canvasRect = canvas.getBoundingClientRect();
+            const centerX = (canvasRect.width / 2) / currentZoom;
+            const centerY = (canvasRect.height / 2) / currentZoom;
+            
+            // Add some randomness to avoid overlapping
+            const offsetX = (Math.random() - 0.5) * 100;
+            const offsetY = (Math.random() - 0.5) * 100;
+            
+            saveState();
+            createWorkflowElement(type, centerX + offsetX, centerY + offsetY);
+            hideEmptyState();
+        }
+
+        function toggleShortcuts() {
+            shortcutsVisible = !shortcutsVisible;
+            if (shortcutsVisible) {
+                keyboardShortcuts.classList.add('show');
+                setTimeout(() => {
+                    keyboardShortcuts.classList.remove('show');
+                    shortcutsVisible = false;
+                }, 5000);
+            } else {
+                keyboardShortcuts.classList.remove('show');
+            }
+        }
+
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'px',
+                format: [canvas.offsetWidth, canvas.offsetHeight]
+            });
+
+            // Create temporary canvas for rendering
+            const tempCanvas = document.createElement('canvas');
+            const ctx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.offsetWidth;
+            tempCanvas.height = canvas.offsetHeight;
+
+            // Fill background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            // Draw grid
+            ctx.strokeStyle = 'rgba(55, 53, 47, 0.09)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < tempCanvas.width; x += 24) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, tempCanvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < tempCanvas.height; y += 24) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(tempCanvas.width, y);
+                ctx.stroke();
+            }
+
+            // Draw wires first
+            ctx.strokeStyle = '#37352f';
+            ctx.lineWidth = 2;
+            wires.forEach(wire => {
+                const startPos = getConnectionPointPosition(wire.start.element, wire.start.point);
+                const endPos = getConnectionPointPosition(wire.end.element, wire.end.point);
+                
+                ctx.beginPath();
+                ctx.moveTo(startPos.x, startPos.y);
+                
+                const path = createArrowPath(startPos, endPos);
+                
+                // Parse the SVG path and draw it
+                const pathCommands = path.match(/[MLC]\s*[\d\.\s,-]+/g);
+                pathCommands.forEach(command => {
+                    const type = command[0];
+                    const coords = command.slice(1).trim().split(/[\s,]+/).map(Number);
+                    
+                    if (type === 'M') {
+                        ctx.moveTo(coords[0], coords[1]);
+                    } else if (type === 'C') {
+                        ctx.bezierCurveTo(coords[0], coords[1], coords[2], coords[3], coords[4], coords[5]);
+                    }
+                });
+                
+                ctx.stroke();
+                
+                // Draw arrowhead
+                const dx = endPos.x - startPos.x;
+                const dy = endPos.y - startPos.y;
+                const angle = Math.atan2(dy, dx);
+                const arrowLength = 10;
+                
+                ctx.beginPath();
+                ctx.moveTo(endPos.x, endPos.y);
+                ctx.lineTo(
+                    endPos.x - arrowLength * Math.cos(angle - Math.PI/6),
+                    endPos.y - arrowLength * Math.sin(angle - Math.PI/6)
+                );
+                ctx.moveTo(endPos.x, endPos.y);
+                ctx.lineTo(
+                    endPos.x - arrowLength * Math.cos(angle + Math.PI/6),
+                    endPos.y - arrowLength * Math.sin(angle + Math.PI/6)
+                );
+                ctx.stroke();
+            });
+
+            // Draw elements
+            const elements = canvas.querySelectorAll('.workflow-element');
+            elements.forEach(element => {
+                const rect = element.getBoundingClientRect();
+                const canvasRect = canvas.getBoundingClientRect();
+                const x = (rect.left - canvasRect.left) / currentZoom;
+                const y = (rect.top - canvasRect.top) / currentZoom;
+                const width = element.offsetWidth;
+                const height = element.offsetHeight;
+
+                const textInput = element.querySelector('.element-text');
+                const text = textInput ? textInput.value : '';
+                const textColor = textInput ? textInput.style.color || '#37352f' : '#37352f';
+                const borderColor = element.style.borderColor || '#37352f';
+
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 2;
+                ctx.font = '500 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                if (element.classList.contains('start-end')) {
+                    drawRoundedRect(ctx, x, y, width, height, 24);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (element.classList.contains('process')) {
+                    ctx.fillRect(x, y, width, height);
+                    ctx.strokeRect(x, y, width, height);
+                } else if (element.classList.contains('decision')) {
+                    ctx.save();
+                    ctx.translate(x + width/2, y + height/2);
+                    ctx.rotate(Math.PI/4);
+                    ctx.fillRect(-width/2, -height/2, width, height);
+                    ctx.strokeRect(-width/2, -height/2, width, height);
+                    ctx.restore();
+                } else if (element.classList.contains('connector')) {
+                    ctx.beginPath();
+                    ctx.ellipse(x + width/2, y + height/2, width/2, height/2, 0, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (element.classList.contains('document')) {
+                    ctx.fillRect(x, y, width, height - 12);
+                    ctx.strokeRect(x, y, width, height - 12);
+                    // Document fold
+                    ctx.fillRect(x, y + height - 12, width, 12);
+                    ctx.strokeRect(x, y + height - 12, width, 12);
+                } else if (element.classList.contains('database')) {
+                    // Database cylinder
+                    ctx.beginPath();
+                    ctx.ellipse(x + width/2, y + 10, width/2, 10, 0, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    ctx.fillRect(x, y + 10, width, height - 20);
+                    ctx.beginPath();
+                    ctx.moveTo(x, y + 10);
+                    ctx.lineTo(x, y + height - 10);
+                    ctx.moveTo(x + width, y + 10);
+                    ctx.lineTo(x + width, y + height - 10);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(x + width/2, y + height - 10, width/2, 10, 0, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (element.classList.contains('predefined')) {
+                    drawRoundedRect(ctx, x, y, width, height, 12);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Vertical lines
+                    ctx.beginPath();
+                    ctx.moveTo(x + 12, y);
+                    ctx.lineTo(x + 12, y + height);
+                    ctx.moveTo(x + width - 12, y);
+                    ctx.lineTo(x + width - 12, y + height);
+                    ctx.stroke();
+                } else if (element.classList.contains('delay')) {
+                    ctx.beginPath();
+                    ctx.ellipse(x + width/2, y + height/2, width/2, height/2, 0, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Arrow
+                    ctx.beginPath();
+                    ctx.moveTo(x + 12, y + height/2);
+                    ctx.lineTo(x + 20, y + height/2 - 6);
+                    ctx.lineTo(x + 20, y + height/2 + 6);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Draw text
+                ctx.fillStyle = textColor;
+                ctx.fillText(text, x + width/2, y + height/2);
+            });
+
+            // Convert to image and add to PDF
+            const imgData = tempCanvas.toDataURL('image/png');
+            pdf.addImage(imgData, 'PNG', 0, 0, tempCanvas.width, tempCanvas.height);
+            pdf.save('workflow-diagram.pdf');
+        }
+
+        function drawRoundedRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // Click outside to deselect and cancel connections
+        canvas.addEventListener('click', (e) => {
+            if (e.target === canvas || e.target === svg || e.target === previewSvg) {
+                // Deselect elements and wires
+                document.querySelectorAll('.workflow-element.selected').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                document.querySelectorAll('.wire-line.selected').forEach(line => {
+                    line.classList.remove('selected');
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                });
+                selectedElements = [];
+                hideWireDeleteButton();
+                
+                // Cancel connection mode
+                if (isConnecting) {
+                    resetConnectionMode();
+                }
+                
+                // Hide text edit overlay
+                hideTextEditOverlay();
+                
+                selectedElement = null;
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Prevent default for our shortcuts
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                deleteSelectedElements();
+            }
+            
+            if (e.key === 'Escape') {
+                resetConnectionMode();
+                hideTextEditOverlay();
+            }
+
+            if (e.key === 'h' || e.key === 'H') {
+                if (!textEditOverlay) {
+                    e.preventDefault();
+                    toggleShortcuts();
+                }
+            }
+
+            // Element creation shortcuts
+            if (!textEditOverlay && !isConnecting) {
+                switch(e.key.toLowerCase()) {
+                    case 's':
+                        e.preventDefault();
+                        addElementByShortcut('start');
+                        break;
+                    case 'p':
+                        e.preventDefault();
+                        addElementByShortcut('process');
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        addElementByShortcut('decision');
+                        break;
+                    case 'c':
+                        if (!e.ctrlKey && !e.metaKey) {
+                            e.preventDefault();
+                            addElementByShortcut('connector');
+                        }
+                        break;
+                    case 'o':
+                        e.preventDefault();
+                        addElementByShortcut('document');
+                        break;
+                    case 'b':
+                        e.preventDefault();
+                        addElementByShortcut('database');
+                        break;
+                    case 'r':
+                        e.preventDefault();
+                        addElementByShortcut('predefined');
+                        break;
+                    case 'l':
+                        e.preventDefault();
+                        addElementByShortcut('delay');
+                        break;
+                }
+            }
+
+            // Control/Cmd shortcuts
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case '=':
+                    case '+':
+                        e.preventDefault();
+                        zoomIn();
+                        break;
+                    case '-':
+                        e.preventDefault();
+                        zoomOut();
+                        break;
+                    case '0':
+                        e.preventDefault();
+                        resetZoom();
+                        break;
+                    case 'z':
+                        if (!e.shiftKey) {
+                            e.preventDefault();
+                            undoAction();
+                        }
+                        break;
+                    case 'a':
+                        e.preventDefault();
+                        selectAllElements();
+                        break;
+                    case 'c':
+                        e.preventDefault();
+                        copyElements();
+                        break;
+                    case 'v':
+                        e.preventDefault();
+                        pasteElements();
+                        break;
+                }
+            }
+        });
+
+        // Mouse wheel zoom
+        canvas.addEventListener('wheel', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
+            }
+        });
+
+        // Initialize
+        saveState();
+
+        // Global functions for button clicks
+        window.clearCanvas = clearCanvas;
+        window.exportToPDF = exportToPDF;
+        window.saveTextEdit = saveTextEdit;
+        window.cancelTextEdit = cancelTextEdit;
+        window.undoAction = undoAction;
+        window.zoomIn = zoomIn;
+        window.zoomOut = zoomOut;
+        window.resetZoom = resetZoom;
+        window.toggleShortcuts = toggleShortcuts;
+    </script>
+</body>
+</html>
+
+            
