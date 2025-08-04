@@ -1,44 +1,40 @@
-# Workflow Builder 🏗️
+```markdown
+<details>
+<summary><b>📋 Workflow Builder - Complete Documentation</b></summary>
 
-A responsive, interactive workflow diagram builder with drag-and-drop functionality, connection tools, and PDF export capabilities.
+# Workflow Builder 🏗️  
+A responsive, interactive workflow diagram builder with drag-and-drop functionality.
 
 ## 📌 Features
-- **Drag-and-drop elements** (Start/End, Process, Decision, etc.)
-- **Connection system** with bezier curves and arrowheads
-- **Interactive editing** with text and color customization
-- **Undo/Redo functionality** with 50-state history
-- **PDF export** with high-quality vector output
-- **Keyboard shortcuts** for all major actions
-- **Zoom controls** (mouse wheel + buttons)
-- **Responsive design** works on desktop and tablet
-- **Visual feedback** with hover effects and selection states
+- **7 Element Types**: Start/End, Process, Decision, etc.
+- **Smart Connections**: Bezier curves with arrowheads
+- **Visual Editing**: Text/color customization
+- **History**: 50-state undo/redo system
+- **Export**: PDF generation with jsPDF
 
 ## 🛠️ Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/workflow-builder.git
-   ```
-2. Open ```workflow_builder.html``` in any modern browser
-3. No server or dependencies required!
+```bash
+git clone https://github.com/yourusername/workflow-builder.git
+cd workflow-builder
+```
+Open `workflow_builder.html` in browser
 
-🎮 Usage
-Basic Controls:
-Drag elements from the sidebar to canvas
+## 🎮 Usage
+| Action | Shortcut |
+|--------|----------|
+| Add Element | S/P/D/O keys |
+| Connect | Click blue dots |
+| Edit Text | Double-click |
+| Delete | Del key |
 
-Click connection points (blue dots) to create links
+## 🖥️ Tech
+```text
+Frontend: Vanilla JS + CSS
+PDF: jsPDF library
+Icons: Unicode emoji
+```
 
-Double-click elements to edit text
-
-Delete key removes selected items
-
-Keyboard Shortcuts:
-Key	Action
-S	Add Start/End
-P	Add Process
-D	Add Decision
-O	Add Document
-Del	Delete selected
-Ctrl+A	Select all
-Ctrl+Z	Undo
-Ctrl+C/V	Copy/Paste
-H	Show shortcuts
+## 📜 License
+MIT License - Open source
+</details>
+```
